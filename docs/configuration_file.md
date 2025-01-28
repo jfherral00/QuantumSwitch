@@ -1,6 +1,7 @@
 Configuration file
 ===================
 The configuration file must be named *properties.cfg* and must be placed in the same directory as the Python source code.
+See examples in [examples](../examples/).
 
 The following parameters must be specified:
 
@@ -10,9 +11,9 @@ Simulation
 
 Network topology
 ----------------
-- *list_sw_table*: list of pairs that want to share entanglement. [(1,2),(7,10),...]
+- *list_sw_table*: list of lists of pairs that want to share entanglement.
 - *num_leaves*: number of nodes connected to the switch
-- *list_distance*: list of distances etween end nodes and switch to be simulated (km)
+- *list_distance*: list of distances between end nodes and switch to be simulated (km)
 
 Memory parameters
 ----------------
@@ -22,7 +23,7 @@ Memory parameters
 Quantum processors
 ----------------
 - *dephase_rate*: Dephasing rate in gates (Hz)
-- *list_instr*: list of duration of operations in gates (nanoseconds) [10, 100, ...]
+- *list_instr*: list of duration of operations in gates (nanoseconds)
 
 Quantum sources
 ----------------
