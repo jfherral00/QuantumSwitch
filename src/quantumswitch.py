@@ -27,6 +27,7 @@ import warnings
 #Ignore deprecation warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+
 class EntanglingConnection(Connection):
     """A connection that generates entanglement.
 
@@ -107,6 +108,12 @@ class FibreDepolarizeModel(QuantumErrorModel):
 class ControlProtocol(LocalProtocol):
     '''
     One LocalProtocol controlls every SwapProtocol and CorrectProtocol
+    Parameters
+    ----------
+    network : instance of the network that has been created
+    switching_table: list of tuples
+        Switching table
+    name: optional name of the protocol
     '''
     def __init__(self, network, switching_table, name=None):
         self._network = network
@@ -240,8 +247,11 @@ class CorrectProtocol(NodeProtocol):
     ----------
     node : :class:`~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on.
-    num_nodes : int
-        Number of nodes in the repeater chain network.
+    name: str, optional
+    origin : int
+        Origin node.
+    destination : int
+        Destination node
 
     """
     def __init__(self, node, name, origin, destination,network):
@@ -288,6 +298,10 @@ def create_qprocessor(name,num_leaves,instr_duration):
     ----------
     name : str
         Name of the quantum processor.
+    num_leaves : int
+        number of connected nodes
+    instr_duration : int,
+        Duration of gate operations    
 
     Returns
     -------
@@ -327,6 +341,8 @@ def build_network(num_leaves, link_distance,source_fidelity_sq,switching_table,i
         Source fidelity.
     switching_table: list of tuples
         Switching table
+    instr_duration : int,
+        Duration of gate operations
 
     Returns
     -------
@@ -401,6 +417,9 @@ def setup_datacollector(network, control_protocol, switching_table):
 
     protocol : :class:`~netsquid.protocols.protocol.Protocol`
         Protocol holding all subprotocols used in the network.
+    
+    switching_table: list of tuples
+        Switching table
 
     Returns
     -------
