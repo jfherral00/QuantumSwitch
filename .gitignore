@@ -1,5 +1,6 @@
 # Results from the simulator
 resultados/*
+src/resultados/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
