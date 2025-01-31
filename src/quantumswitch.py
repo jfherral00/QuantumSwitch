@@ -474,7 +474,7 @@ for switching_table in cfg['list_sw_table']:
             dfSwapOK = dc.dataframe[dc.dataframe['F2']>0.95]
 
             df_agrupado = dfSwapOK.groupby('links')
-            print(df_agrupado)
+
             df_data = pandas.DataFrame()
             df_data['Fidelity'] = df_agrupado["F2"].mean()
             df_data['#EPRs'] = df_agrupado['F2'].count()
