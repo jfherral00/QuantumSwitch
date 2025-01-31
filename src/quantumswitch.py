@@ -320,7 +320,8 @@ def create_qprocessor(name,num_leaves,instr_duration):
                             quantum_noise_model=gate_noise_model),
         PhysicalInstruction(INSTR_Z, duration=gate_duration,
                             quantum_noise_model=gate_noise_model),
-        PhysicalInstruction(INSTR_MEASURE_BELL, duration=gate_duration),
+        PhysicalInstruction(INSTR_MEASURE_BELL, duration=gate_duration,
+                            quantum_noise_model=gate_noise_model),
     ]
     qproc = QuantumProcessor(name, num_positions=num_leaves+1, fallback_to_nonphysical=False,
                              mem_noise_models=[mem_noise_model] * (num_leaves+1),
@@ -468,9 +469,11 @@ for switching_table in cfg['list_sw_table']:
             control_protocol.start()
 
             ns.sim_run(duration=cfg['duration'])
+            
+            #If fidelity of entangled pair is below 0.95, entanglement swap has failed
+            dfSwapOK = dc.dataframe[dc.dataframe['F2']>0.95]
 
-
-            df_agrupado = dc.dataframe.groupby('links')
+            df_agrupado = dfSwapOK.groupby('links')
             print(df_agrupado)
             df_data = pandas.DataFrame()
             df_data['Fidelity'] = df_agrupado["F2"].mean()
@@ -485,7 +488,8 @@ for switching_table in cfg['list_sw_table']:
                 'Distance': distance,
                 'Instr_time': instr,
                 'Fidelity': [df_data['Fidelity'].mean()],
-                '#EPRs': [df_data['#EPRs'].mean()],
+                '#MeanEPRsPerDemand': [df_data['#EPRs'].mean()],
+                '#TotalEPRs': [df_data['#EPRs'].sum()],
                 'Time': [df_data['Avg_time'].mean()]}
             )
             df_csv = pandas.concat([df_csv,df_temp], axis=0, ignore_index=True)
