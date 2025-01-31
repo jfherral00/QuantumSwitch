@@ -449,7 +449,7 @@ def setup_datacollector(network, control_protocol, switching_table):
 #Read properties
 cfg = {}
 readProperties(cfg,'./properties.cfg','SimpleSwitch')
-df_csv = pandas.DataFrame(columns=['#Demands','Distance','Instr_time','Fidelity','#EPRs','Time'])
+df_csv = pandas.DataFrame(columns=['#Demands','Distance','Instr_time','Fidelity','#MeanEPRsPerDemand','#EPRsTotal','Time'])
 for switching_table in cfg['list_sw_table']:
     ic(switching_table)
     for instr in cfg['list_instr']:
