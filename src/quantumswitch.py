@@ -470,10 +470,7 @@ for switching_table in cfg['list_sw_table']:
 
             ns.sim_run(duration=cfg['duration'])
             
-            #If fidelity of entangled pair is below 0.95, entanglement swap has failed
-            dfSwapOK = dc.dataframe[dc.dataframe['F2']>0.95]
-
-            df_agrupado = dfSwapOK.groupby('links')
+            df_agrupado = dc.dataframe.groupby('links')
 
             df_data = pandas.DataFrame()
             df_data['Fidelity'] = df_agrupado["F2"].mean()
