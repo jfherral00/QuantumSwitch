@@ -6,6 +6,8 @@ class Switch(Node):
         self._swap_queue = []
         super().__init__(name,qmemory=qmemory)
         self._solved_conflicts = 0
+        self._random = None #Used when strategy is random
+        
         
     def add_request(self,request):
         '''
@@ -30,8 +32,10 @@ class Switch(Node):
             protocol_name = self._swap_queue[0]
         elif strategy == 'LIFO':
             protocol_name = self._swap_queue[-1]
-        else:
-            protocol_name = random.choice(self._swap_queue)
+        else: #Random
+            if self._random is None:
+                self._random = random.choice(self._swap_queue)
+            protocol_name = self._random
             
         return(protocol_name)
     
@@ -47,6 +51,7 @@ class Switch(Node):
         
         position = self._swap_queue.index(request)
         self._swap_queue.pop(position)
+        self._random = None
         
     def get_solved_conflicts(self):
         '''
