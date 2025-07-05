@@ -215,6 +215,7 @@ class SwapProtocol(NodeProtocol):
             not_serviced = True
             
             if self.node.qmemory.busy:
+                self.node.increase_solved_conflicts()
                 yield self.await_program(self.node.qmemory)
             
             while not_serviced:
