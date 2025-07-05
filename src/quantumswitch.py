@@ -22,6 +22,7 @@ from netsquid.components.qchannel import QuantumChannel
 from netsquid.components.qsource import QSource, SourceStatus
 from netsquid.qubits.state_sampler import StateSampler
 from netsquid.components.models.delaymodels import FibreDelayModel, FixedDelayModel
+from switch import Switch
 import warnings
 
 #Ignore deprecation warnings
@@ -114,8 +115,9 @@ class ControlProtocol(LocalProtocol):
     switching_table: list of tuples
         Switching table
     name: optional name of the protocol
+    strategy: conflict decission strategy, default is 'FIFO'
     '''
-    def __init__(self, network, switching_table, name=None):
+    def __init__(self, network, switching_table, name=None, strategy = 'FIFO'):
         self._network = network
         self._switching_table = switching_table
         name = name if name else f"ControlProtocol"
@@ -130,7 +132,7 @@ class ControlProtocol(LocalProtocol):
         # since the subprotocols would otherwise overwrite each other in the main protocol.
         switch = network.nodes["Switch"]
         for route in switching_table:
-            subprotocol = SwapProtocol(node=switch, origin=route[0], destination=route[1])
+            subprotocol = SwapProtocol(node=switch, origin=route[0], destination=route[1],strategy=strategy)
             self.add_subprotocol(subprotocol)
             node = nodes[route[1]-1]
             subprotocol = CorrectProtocol(node=node, name=f"Correct_{route[1]}",origin =route[0], destination=route[1],network=network)
@@ -190,10 +192,11 @@ class SwapProtocol(NodeProtocol):
         Destination node
     """
 
-    def __init__(self, node, origin, destination):
+    def __init__(self, node, origin, destination,strategy):
         name = f"SwapProtocol{origin}_{destination}"
         self._origin = origin
         self._destination = destination
+        self._strategy = strategy
         super().__init__(node, name)
         self._qmem_input_port_l = self.node.qmemory.ports[f"qin{origin}"]
         self._qmem_input_port_r = self.node.qmemory.ports[f"qin{destination}"]
@@ -204,8 +207,10 @@ class SwapProtocol(NodeProtocol):
     def run(self):
         while True:
             yield (self.await_port_input(self._qmem_input_port_l) &
-                   self.await_port_input(self._qmem_input_port_r))   
-            request_stack.append(self._origin)  
+                   self.await_port_input(self._qmem_input_port_r))  
+
+            #Insert Bell measurement request into queue 
+            self.node.add_request(self._origin)  
             
             not_serviced = True
             
@@ -213,14 +218,16 @@ class SwapProtocol(NodeProtocol):
                 yield self.await_program(self.node.qmemory)
             
             while not_serviced:
-                if request_stack[0] == self._origin:
+                if self.node.get_request(self._strategy) == self._origin:
                     yield self.node.qmemory.execute_program(self._program, qubit_mapping=[self._destination,self._origin])
-                    request_stack.pop(0)
+                    #Request is being serviced, remove from list
+                    self.node.remove_request(self._origin)
                     m, = self._program.output["m"]
                     # Send result to right node on end
                     self.node.ports[f"ccon_R{self._destination}"].tx_output(Message(m))
                     not_serviced = False
                 else:
+                    self.node.increase_solved_conflicts()
                     yield self.await_timer(duration=100) #Nothing to do, just wait
 
 class SwapCorrectProgram(QuantumProgram):
@@ -356,7 +363,7 @@ def build_network(num_leaves, link_distance,source_fidelity_sq,switching_table,i
     network = Network("Simple Switch")
 
     #Create Switch with num_leaves quantum processors
-    switch = Node(f"Switch", qmemory=create_qprocessor(f"qproc_switch",num_leaves,instr_duration))
+    switch = Switch(f"Switch", qmemory=create_qprocessor(f"qproc_switch",num_leaves,instr_duration))
     # Create nodes with quantum processors
     nodes = []
     nodes.append(switch)
@@ -456,14 +463,12 @@ for switching_table in cfg['list_sw_table']:
         ic(instr)
         for distance in cfg['list_distance']:
             ic(distance)
-            #This stack will store the requests that want to use entanglement. Will be managed as FIFO
-            request_stack = []
 
             network = build_network(num_leaves=cfg['num_leaves'],link_distance=distance, 
                                     source_fidelity_sq=cfg['source_fidelity_sq'], 
                                     switching_table=switching_table,instr_duration=instr)
 
-            control_protocol = ControlProtocol(network=network,switching_table=switching_table,name=ControlProtocol)
+            control_protocol = ControlProtocol(network=network,switching_table=switching_table,name=ControlProtocol,strategy=cfg['conflict_strategy'])
             dc = setup_datacollector(network,control_protocol,switching_table)
 
             control_protocol.start()
@@ -474,7 +479,10 @@ for switching_table in cfg['list_sw_table']:
 
             df_data = pandas.DataFrame()
             df_data['Fidelity'] = df_agrupado["F2"].mean()
+            df_data['Std Fidelity'] = df_agrupado["F2"].std()
+            df_data['Var Fidelity'] = df_agrupado["F2"].var()
             df_data['#EPRs'] = df_agrupado['F2'].count()
+            df_data['Solved_conflicts'] = network.get_node('Switch').get_solved_conflicts()
 
             for path in df_data.index.to_list():
                 df_data.at[path,'Avg_time'] = dc.dataframe[dc.dataframe['links']==path]['time_stamp'].diff().mean()
